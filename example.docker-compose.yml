@@ -1,0 +1,17 @@
+version: '3.2'
+services:
+
+  walletmon:
+    build: .
+    command: "cc-pom.py \
+              -a address1 address2 etc \
+              -t 100 \
+              -l 'http://lcd_endpoint_url' \
+              -k 'PAGERDUTY_API_KEY' \
+              -w DISCORD_WEBHOOK_URL"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    restart: unless-stopped
