@@ -72,7 +72,7 @@ def main():
         nargs='+',
         type=str,
         required=False,
-        help="Pagerduty API Key to send notifications to"
+        help="Node API Endpoint(s) to connect to"
     )
     parser.add_argument(
         "-f",
@@ -81,16 +81,16 @@ def main():
         type=int,
         default=5,
         required=False,
-        help="Pagerduty API Key to send notifications to"
+        help="The frequency in minutes that CC-POM checks the API for new misses"
     )
     parser.add_argument(
         "-e",
         "--delay",
         dest="delay",
         type=int,
-        default=5,
+        default=30,
         required=False,
-        help="Pagerduty API Key to send notifications to"
+        help="Time between repeated notifications (default 30 minutes)"
     )
     parser.add_argument(
         "--discord_threshold",
@@ -98,7 +98,7 @@ def main():
         type=int,
         default=50,
         required=False,
-        help="Pagerduty API Key to send notifications to"
+        help="Discord specific threshold for alerts: TODO"
     )
     parser.add_argument(
         "--pagerduty_threshold",
@@ -106,7 +106,7 @@ def main():
         type=int,
         default=500,
         required=False,
-        help="Pagerduty API Key to send notifications to"
+        help="PagerDuty specific threshold for alerts: TODO"
     )
     parser.add_argument(
         "-u",
