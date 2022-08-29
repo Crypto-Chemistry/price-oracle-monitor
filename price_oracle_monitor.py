@@ -96,7 +96,6 @@ def main():
         "--discord_threshold",
         dest="discord_threshold",
         type=int,
-        default=50,
         required=False,
         help="Discord specific threshold for alerts: TODO"
     )
@@ -104,7 +103,6 @@ def main():
         "--pagerduty_threshold",
         dest="pagerduty_threshold",
         type=int,
-        default=500,
         required=False,
         help="PagerDuty specific threshold for alerts: TODO"
     )
