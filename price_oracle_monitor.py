@@ -118,9 +118,9 @@ def main():
     args = parser.parse_args()
     active_alerts=[]
     previous_misses={}
-    misses=1
+    #misses=1
     while True:
-        misses+=1
+        #misses+=1
         for address in args.addresses:
             num_miss_query=f"/oracle/validators/{address}/miss"
             for endpoint in args.lcd_endpoint:
@@ -129,7 +129,7 @@ def main():
                     print("Trying Next Endpoint")
                 else:
                     break
-            #misses=int(json_response['miss_counter'])
+            misses=int(json_response['miss_counter'])
 
             # Check if the address is being run for the first time OR
             # Check if the address has more misses than prior runs
