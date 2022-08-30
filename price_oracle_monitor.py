@@ -116,11 +116,12 @@ def main():
     )
 
     args = parser.parse_args()
+    global active_alerts
     active_alerts=[]
     previous_misses={}
-    #misses=1
+    # misses=27
     while True:
-        #misses+=1
+        # misses-=1
         for address in args.addresses:
             num_miss_query=f"/oracle/validators/{address}/miss"
             for endpoint in args.lcd_endpoint:
@@ -172,15 +173,17 @@ def main():
 
                 previous_misses[address]=int(misses)
             elif previous_misses[address] == misses:
-                for service in "Discord" "PagerDuty":
+                service_list=["Discord","PagerDuty"]
+                for service in service_list:
                     active_alert = check_active_alerts(active_alerts,address,service)
-                    if alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
+                    if active_alert and alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
+                        print(f"Cleaning up active alerts: {service}")
                         delete_active_alert(address,service)
-                        print("Cleaning up stale alerts")
             elif previous_misses[address] > misses:
-                for service in "Discord" "PagerDuty":
+                service_list=["Discord","PagerDuty"]
+                for service in service_list:
+                    print(f"Cleaning up active alerts: {service}")
                     delete_active_alert(address,service)
-                    print("Cleaning up active_alerts (most likely due to epoch)")
             print(f"Current misses for {address}: {misses}")
 
         #print(f"Previous Misses: {previous_misses}")
@@ -240,7 +243,6 @@ def check_active_alerts(active_alerts, address, service):
                     return active_alert
 
 def delete_active_alert(address, service):
-    global active_alerts
     for i in range(len(active_alerts)):
         if active_alerts[i]['Service'] == service and active_alerts[i]['Address'] == address:
             del active_alerts[i]
