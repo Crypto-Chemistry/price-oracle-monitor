@@ -156,7 +156,7 @@ def main():
             # Cleanup stale/timed-out alerts
             elif previous_misses[address] == misses:
                 for service in service_list:
-                    active_alert = check_active_alerts(active_alerts,address,service['Service]'])
+                    active_alert = check_active_alerts(active_alerts,address,service['Service'])
                     if active_alert and alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
                         print(f"Cleaning up active alerts: {service['Service']}")
                         delete_active_alert(address,service['Service'])
