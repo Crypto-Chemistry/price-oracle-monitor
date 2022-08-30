@@ -199,12 +199,6 @@ def send_pagerduty_alert(pagerduty_api_key, summary):
     session = EventsAPISession(pagerduty_api_key)
     session.trigger(summary, 'ccpom')
 
-def create_discord_embed(address, misses, threshold, lcd_endpoint, num_miss_query):
-    embed = DiscordEmbed(title="Price Oracle Alert", description=f"{address}\r\n{lcd_endpoint}{num_miss_query}", color='e53935')
-    embed.add_embed_field(name='Misses', value=misses)
-    embed.add_embed_field(name='Threshold', value=threshold)
-    return embed
-
 def send_discord_alert(url, uuid, *args):
     if not url:
         url = os.environ['DISCORD_WEBHOOK']
@@ -216,6 +210,12 @@ def send_discord_alert(url, uuid, *args):
         webhook.add_embed(embed)
     response = webhook.execute()
     return response
+
+def create_discord_embed(address, misses, threshold, lcd_endpoint, num_miss_query):
+    embed = DiscordEmbed(title="Price Oracle Alert", description=f"{address}\r\n{lcd_endpoint}{num_miss_query}", color='e53935')
+    embed.add_embed_field(name='Misses', value=misses)
+    embed.add_embed_field(name='Threshold', value=threshold)
+    return embed
 
 def check_active_alerts(active_alerts, address, service):
     if active_alerts:
