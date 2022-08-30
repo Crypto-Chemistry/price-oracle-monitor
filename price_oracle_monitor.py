@@ -130,7 +130,7 @@ def main():
                 else:
                     break
             misses=int(json_response['miss_counter'])
-
+            alert_time = datetime.now()
             # Check if the address is being run for the first time OR
             # Check if the address has more misses than prior runs
             if address not in previous_misses.keys() or previous_misses[address] < misses:
@@ -138,7 +138,6 @@ def main():
                     print("Error: Global thresholds cannot be used with service specific thresholds")
                     sys.exit()
                 if compare_balance(args.threshold, misses):
-                    alert_time = datetime.now()
                     if args.pagerduty or args.pagerduty_api_key:
                         service = "PagerDuty"
                         summary = f"Price Oralce Alert: {address} - {misses} Missed"
