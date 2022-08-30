@@ -78,8 +78,8 @@ def main():
         "-f",
         "--frequency",
         dest="frequency",
-        type=int,
-        default=5,
+        type=float,
+        default=5.0,
         required=False,
         help="The frequency in minutes that CC-POM checks the API for new misses"
     )
@@ -117,78 +117,59 @@ def main():
 
     args = parser.parse_args()
     global active_alerts
+    global service_list
+    service_list=[]
+    set_service_list(args)
     active_alerts=[]
     previous_misses={}
-    # misses=27
+    #misses=27
+
+    #Check valid argument combinations
+    if args.threshold and (args.discord_threshold or args.pagerduty_threshold):
+        print("Error: Global thresholds cannot be used with service specific thresholds")
+        sys.exit()
+
+    # Main service loop
     while True:
-        # misses-=1
+        #misses-=1
         for address in args.addresses:
             num_miss_query=f"/oracle/validators/{address}/miss"
+
             for endpoint in args.lcd_endpoint:
                 json_response,status_code=query_lcd(endpoint, num_miss_query)
                 if status_code != 200:
                     print("Trying Next Endpoint")
                 else:
                     break
+
             misses=int(json_response['miss_counter'])
             alert_time = datetime.now()
+
             # Check if the address is being run for the first time OR
             # Check if the address has more misses than prior runs
             if address not in previous_misses.keys() or previous_misses[address] < misses:
-                if args.threshold and (args.discord_threshold or args.pagerduty_threshold):
-                    print("Error: Global thresholds cannot be used with service specific thresholds")
-                    sys.exit()
                 if compare_balance(args.threshold, misses):
-                    if args.pagerduty or args.pagerduty_api_key:
-                        service = "PagerDuty"
-                        summary = f"Price Oralce Alert: {address} - {misses} Missed"
-                        active_alert = check_active_alerts(active_alerts,address,service)
-                        if active_alert:
-                            if alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
-                                response = send_pagerduty_alert(args.pagerduty_api_key, summary)
-                                check_response(response,service)
-                                # Update 'Last Alert' for the specific address/service pair
-                                active_alert['Last Alert'] = alert_time
-                        else:
-                            # Creates the first alert for the address/service pair
-                            active_alerts.append(create_alert(service, address, misses, alert_time))
-                            response = send_pagerduty_alert(args.pagerduty_api_key, summary)
-                            check_response(response,service)
-                    if args.discord or args.discord_webhook:
-                        service = "Discord"
-                        active_alert = check_active_alerts(active_alerts,address,service)
-                        embed=create_discord_embed(address, misses, args.threshold, endpoint, num_miss_query)
-                        if active_alert:
-                            # Time since last alert is greather than or equal to the user set frequency
-                            if alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
-                                response = send_discord_alert(args.discord_webhook, args.discord_uuid, embed)
-                                check_response(response,service)
-                                # Update 'Last Alert' for the specific address/service pair
-                                active_alert['Last Alert'] = alert_time
-                        else:
-                            # Creates the first alert for the address/service pair
-                            active_alerts.append(create_alert(service, address, misses, alert_time))
-                            response = send_discord_alert(args.discord_webhook, args.discord_uuid, embed)
-                            check_response(response,service)
-
+                    for service in service_list:
+                        manage_service_alerts(address, service, misses, args.delay, num_miss_query, alert_time)
                 previous_misses[address]=int(misses)
+
+            # Cleanup stale/timed-out alerts
             elif previous_misses[address] == misses:
-                service_list=["Discord","PagerDuty"]
                 for service in service_list:
-                    active_alert = check_active_alerts(active_alerts,address,service)
+                    active_alert = check_active_alerts(active_alerts,address,service['Service]'])
                     if active_alert and alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
-                        print(f"Cleaning up active alerts: {service}")
-                        delete_active_alert(address,service)
+                        print(f"Cleaning up active alerts: {service['Service']}")
+                        delete_active_alert(address,service['Service'])
+
+            # Cleanup alerts from previous ephocs
             elif previous_misses[address] > misses:
-                service_list=["Discord","PagerDuty"]
                 for service in service_list:
-                    print(f"Cleaning up active alerts: {service}")
-                    delete_active_alert(address,service)
+                    print(f"Cleaning up active alerts: {service['Service']}")
+                    delete_active_alert(address,service['Service'])
+
             print(f"Current misses for {address}: {misses}")
 
-        #print(f"Previous Misses: {previous_misses}")
         print(f"Active Alerts: {active_alerts}")
-        #print(f"Sleeping for {args.frequency} minutes")
         time.sleep(args.frequency * 60)
 
 def query_lcd(lcd_endpoint, query):
@@ -250,6 +231,63 @@ def delete_active_alert(address, service):
 def check_response(response, service):
     if response.status_code != 200:
         print(f"Error sending Alert: {service}")
+
+def set_service_list(args):
+    if args.pagerduty or args.pagerduty_api_key:
+        if args.threshold:
+            pagerduty_threshold=args.threshold
+        else:
+            pagerduty_threshold=args.pagerduty_threshold
+        pagerduty={
+            'Service': "PagerDuty",
+            'API': args.pagerduty_api_key,
+            'Threshold': pagerduty_threshold
+        }
+        service_list.append(pagerduty)
+    if args.discord or args.discord_webhook:
+        if args.threshold:
+            discord_threshold=args.threshold
+        else:
+            discord_threshold=args.discord_threshold
+        discord={
+            'Service': "Discord",
+            'API': args.discord_webhook,
+            'Threshold': discord_threshold,
+            'UUID': args.discord_uuid
+        }
+        service_list.append(discord)
+        
+def manage_service_alerts(address, service, misses, delay, num_miss_query, alert_time):
+    if service['Service'] == "PagerDuty":
+        summary = f"Price Oralce Alert: {address} - {misses} Missed"
+        active_alert = check_active_alerts(active_alerts,address,service['Service'])
+        if active_alert:
+            if alert_time >= (active_alert['Last Alert'] + timedelta(minutes=delay)):
+                response = send_pagerduty_alert(service['API'], summary)
+                check_response(response,service['Service'])
+                # Update 'Last Alert' for the specific address/service pair
+                active_alert['Last Alert'] = alert_time
+        else:
+            # Creates the first alert for the address/service pair
+            active_alerts.append(create_alert(service['Service'], address, misses, alert_time))
+            response = send_pagerduty_alert(service['API'], summary)
+            check_response(response,service['Service'])
+
+    if service['Service'] == "Discord":
+        active_alert = check_active_alerts(active_alerts,address,service['Service'])
+        embed=create_discord_embed(address, misses, service['Threshold'], service['API'], num_miss_query)
+        if active_alert:
+            # Time since last alert is greather than or equal to the user set frequency
+            if alert_time >= (active_alert['Last Alert'] + timedelta(minutes=delay)):
+                response = send_discord_alert(service['API'], service['UUID'], embed)
+                check_response(response,service)
+                # Update 'Last Alert' for the specific address/service pair
+                active_alert['Last Alert'] = alert_time
+        else:
+            # Creates the first alert for the address/service pair
+            active_alerts.append(create_alert(service['Service'], address, misses, alert_time))
+            response = send_discord_alert(service['API'], service['UUID'], embed)
+            check_response(response,service['Service'])
 
 if __name__ == "__main__":
     main()
