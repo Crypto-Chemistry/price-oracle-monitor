@@ -29,34 +29,22 @@ def main():
         help="Enable discord notifications"
     )
     parser.add_argument(
-        "-p",
-        "--pagerduty",
-        action='store_true',
-        help="Enable discord notifications"
-    )
-    parser.add_argument(
-        "-w",
-        "--webhook",
-        dest="discord_webhook",
-        type=str,
-        required=False,
-        help="Discord webhook url to send notifications to"
-    )
-    parser.add_argument(
-        "-t",
-        "--threshold",
-        dest="threshold",
+        "-e",
+        "--delay",
+        dest="delay",
         type=int,
+        default=30,
         required=False,
-        help="Threshold for wallet balances before sending notifications"
+        help="Time between repeated notifications (default 30 minutes)"
     )
     parser.add_argument(
-        "-r",
-        "--list-threshold",
-        dest="threshold_list",
-        type=list,
+        "-f",
+        "--frequency",
+        dest="frequency",
+        type=float,
+        default=5.0,
         required=False,
-        help="Thresholds for wallet balances before sending notifications"
+        help="The frequency in minutes that CC-POM checks the API for new misses"
     )
     parser.add_argument(
         "-k",
@@ -76,36 +64,26 @@ def main():
         help="Node API Endpoint(s) to connect to"
     )
     parser.add_argument(
-        "-f",
-        "--frequency",
-        dest="frequency",
-        type=float,
-        default=5.0,
-        required=False,
-        help="The frequency in minutes that CC-POM checks the API for new misses"
+        "-p",
+        "--pagerduty",
+        action='store_true',
+        help="Enable discord notifications"
     )
     parser.add_argument(
-        "-e",
-        "--delay",
-        dest="delay",
-        type=int,
-        default=30,
+        "-r",
+        "--list-threshold",
+        dest="threshold_list",
+        type=list,
         required=False,
-        help="Time between repeated notifications (default 30 minutes)"
+        help="Thresholds for wallet balances before sending notifications"
     )
     parser.add_argument(
-        "--discord_threshold",
-        dest="discord_threshold",
+        "-t",
+        "--threshold",
+        dest="threshold",
         type=int,
         required=False,
-        help="Discord specific threshold for alerts: TODO"
-    )
-    parser.add_argument(
-        "--pagerduty_threshold",
-        dest="pagerduty_threshold",
-        type=int,
-        required=False,
-        help="PagerDuty specific threshold for alerts: TODO"
+        help="Threshold for wallet balances before sending notifications"
     )
     parser.add_argument(
         "-u",
@@ -120,6 +98,28 @@ def main():
         "--verbose",
         action='store_true',
         help="Enable verbose output"
+    )
+    parser.add_argument(
+        "-w",
+        "--webhook",
+        dest="discord_webhook",
+        type=str,
+        required=False,
+        help="Discord webhook url to send notifications to"
+    )
+    parser.add_argument(
+        "--discord_threshold",
+        dest="discord_threshold",
+        type=int,
+        required=False,
+        help="Discord specific threshold for alerts: TODO"
+    )
+    parser.add_argument(
+        "--pagerduty_threshold",
+        dest="pagerduty_threshold",
+        type=int,
+        required=False,
+        help="PagerDuty specific threshold for alerts: TODO"
     )
 
     args = parser.parse_args()
