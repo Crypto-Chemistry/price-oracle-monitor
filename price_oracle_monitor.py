@@ -167,9 +167,9 @@ def main():
                     print(f"Cleaning up active alerts: {service['Service']}")
                     delete_active_alert(address,service['Service'])
 
-            print(f"Current misses for {address}: {misses}")
+            print(f"[{datetime.now()}] Current misses for {address}: {misses}")
 
-        print(f"Active Alerts: {active_alerts}")
+        print(f"[{datetime.now()}] Active Alerts: {active_alerts}")
         time.sleep(args.frequency * 60)
 
 def query_lcd(lcd_endpoint, query):
