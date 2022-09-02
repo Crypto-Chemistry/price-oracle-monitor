@@ -131,17 +131,17 @@ def main():
     previous_misses={}
     #misses=27
 
-    #Configure Logger
+    # Configure Logger
+    global logger
+    logger = logging.getLogger("price_oracle_monitor")
     if args.verbose:
-        logging.basicConfig(format='[%(asctime)s][%(funcName)20s] %(message)s', level=logging.DEBUG)
+        logging.basicConfig(format='[%(asctime)s][%(name)22s][%(funcName)20s] %(message)s', level=logging.DEBUG)
     else:
-        logging.basicConfig(format='[%(asctime)s] %(message)s', level=logging.INFO)
-    
-    logging.getLogger("urllib3.connectionpool").disabled = True
+        logging.basicConfig(format='[%(asctime)s][%(name)s] %(message)s', level=logging.INFO)
 
     #Check valid argument combinations
     if args.threshold and (args.discord_threshold or args.pagerduty_threshold):
-        logging.error("Global thresholds cannot be used with service specific thresholds")
+        logger.error("Global thresholds cannot be used with service specific thresholds")
         sys.exit()
 
     # Main service loop
@@ -153,8 +153,8 @@ def main():
             for endpoint in args.lcd_endpoint:
                 json_response,status_code=query_lcd(endpoint, num_miss_query)
                 if status_code != 200:
-                    logging.debug(f"Endpoint: {endpoint}")
-                    logging.debug(f"Status Code: {status_code}")
+                    logger.debug(f"Endpoint: {endpoint}")
+                    logger.debug(f"Status Code: {status_code}")
                 else:
                     break
 
@@ -174,18 +174,18 @@ def main():
                 for service in service_list:
                     active_alert = check_active_alerts(active_alerts,address,service['Service'])
                     if active_alert and alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
-                        logging.info(f"Cleaning up active alerts: {service['Service']}")
+                        logger.info(f"Cleaning up active alerts: {service['Service']}")
                         delete_active_alert(address,service['Service'])
 
             # Cleanup alerts from previous ephocs
             elif previous_misses[address] > misses:
                 for service in service_list:
-                    logging.debug(f"Cleaning up active alerts: {service['Service']}")
+                    logger.debug(f"Cleaning up active alerts: {service['Service']}")
                     delete_active_alert(address,service['Service'])
 
-            logging.info(f"Current misses for {address}: {misses}")
+            logger.info(f"Current misses for {address}: {misses}")
 
-        logging.info(f"Active Alerts: {active_alerts}")
+        logger.info(f"Active Alerts: {active_alerts}")
         time.sleep(args.frequency * 60)
 
 def query_lcd(lcd_endpoint, query):
@@ -234,24 +234,24 @@ def create_discord_embed(address, misses, threshold, lcd_endpoint, num_miss_quer
     return embed
 
 def check_active_alerts(active_alerts, address, service):
-    logging.debug("Checking active_alerts for matching alert")
-    logging.debug(f"{active_alerts}")
+    logger.debug("Checking active_alerts for matching alert")
+    logger.debug(f"{active_alerts}")
     if active_alerts:
         for active_alert in active_alerts:
                 if active_alert['Service'] == service and active_alert['Address'] == address:
                     return active_alert
 
 def delete_active_alert(address, service):
-    logging.debug("Checking active_alerts for matching alert")
-    logging.debug(f"{active_alerts}")
+    logger.debug("Checking active_alerts for matching alert")
+    logger.debug(f"{active_alerts}")
     for i in range(len(active_alerts)):
         if active_alerts[i]['Service'] == service and active_alerts[i]['Address'] == address:
             del active_alerts[i]
-    logging.debug(f"{active_alerts}")
+    logger.debug(f"{active_alerts}")
 
 def check_response(response, service):
     if response.status_code != 200:
-        logging.error(f"Error sending alert: {service}")
+        logger.error(f"Error sending alert: {service}")
 
 def set_service_list(args):
     if args.pagerduty or args.pagerduty_api_key:
