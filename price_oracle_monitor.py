@@ -129,6 +129,8 @@ def main():
     set_service_list(args)
     active_alerts=[]
     previous_misses={}
+    global endpoints
+    endpoints = args.lcd_endpoint
     #misses=27
 
     # Configure Logger
@@ -149,50 +151,96 @@ def main():
         #misses-=1
         for address in args.addresses:
             num_miss_query=f"/oracle/validators/{address}/miss"
+            
+            # Initialize json_response in case all RPC endpoints are unavailable
+            json_response={}
 
-            for endpoint in args.lcd_endpoint:
-                json_response,status_code=query_lcd(endpoint, num_miss_query)
-                if status_code != 200:
+            # Check Endpoints
+            #check_endpoints(address, endpoints, num_miss_query, args.delay)
+            for endpoint in endpoints:
+                try:
+                    json_response,status_code=query_lcd(endpoint, num_miss_query)
+                    if status_code != 200:
+                        logger.debug(f"Endpoint: {endpoint}")
+                        logger.debug(f"Status Code: {status_code}")
+                    else:
+                        # Moves working RPC endpoint to front of list
+                        endpoints.insert(0, endpoints.pop(endpoints.index(endpoint)))
+                        logger.debug(f"Endpoints: {endpoints}")
+                        break
+                except:
+                    logger.warning(f"{endpoint} returned invalid data")
                     logger.debug(f"Endpoint: {endpoint}")
-                    logger.debug(f"Status Code: {status_code}")
-                else:
-                    break
+                    logger.debug(f"{endpoints}")
+                    if endpoint == endpoints[-1]:
+                        alert_time = datetime.now()
+                        logger.critical(f"No RPC Endpoints Available")
+                        for service in service_list:
+                            manage_service_alerts(address, service, 0, args.delay, num_miss_query, alert_time, endpoints)
+            
+            # Only proceed with valid endpoint response
+            if json_response:
+                misses=int(json_response['miss_counter'])
+                alert_time = datetime.now()
 
-            misses=int(json_response['miss_counter'])
-            alert_time = datetime.now()
+                # Check if the address is being run for the first time OR
+                # Check if the address has more misses than prior runs
+                if address not in previous_misses.keys() or previous_misses[address] < misses:
+                    if compare_balance(args.threshold, misses):
+                        for service in service_list:
+                            manage_service_alerts(address, service, misses, args.delay, num_miss_query, alert_time)
+                    previous_misses[address]=int(misses)
 
-            # Check if the address is being run for the first time OR
-            # Check if the address has more misses than prior runs
-            if address not in previous_misses.keys() or previous_misses[address] < misses:
-                if compare_balance(args.threshold, misses):
+                # Cleanup stale/timed-out alerts
+                elif previous_misses[address] == misses:
                     for service in service_list:
-                        manage_service_alerts(address, service, misses, args.delay, num_miss_query, alert_time)
-                previous_misses[address]=int(misses)
+                        active_alert = check_active_alerts(active_alerts,address,service['Service'])
+                        if active_alert and alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
+                            logger.info(f"Cleaning up active alerts: {service['Service']}")
+                            delete_active_alert(address,service['Service'])
 
-            # Cleanup stale/timed-out alerts
-            elif previous_misses[address] == misses:
-                for service in service_list:
-                    active_alert = check_active_alerts(active_alerts,address,service['Service'])
-                    if active_alert and alert_time >= (active_alert['Last Alert'] + timedelta(minutes=args.delay)):
-                        logger.info(f"Cleaning up active alerts: {service['Service']}")
+                # Cleanup alerts from previous ephocs
+                elif previous_misses[address] > misses:
+                    for service in service_list:
+                        logger.debug(f"Cleaning up active alerts: {service['Service']}")
                         delete_active_alert(address,service['Service'])
 
-            # Cleanup alerts from previous ephocs
-            elif previous_misses[address] > misses:
-                for service in service_list:
-                    logger.debug(f"Cleaning up active alerts: {service['Service']}")
-                    delete_active_alert(address,service['Service'])
-
-            logger.info(f"Current misses for {address}: {misses}")
+                logger.info(f"Current misses for {address}: {misses}")
 
         logger.info(f"Active Alerts: {active_alerts}")
         time.sleep(args.frequency * 60)
 
 def query_lcd(lcd_endpoint, query):
-    response = requests.get(lcd_endpoint+query)
-    status_code = response.status_code
-    json_response= json.loads(response.text)
-    return json_response, status_code
+    try:
+        response = requests.get(lcd_endpoint+query)
+        status_code = response.status_code
+        json_response= json.loads(response.text)
+        return json_response, status_code
+    except:
+        logger.warning(f"Failed to establish a connection with {lcd_endpoint}")
+
+def check_endpoints(address, endpoints, num_miss_query):
+    for endpoint in endpoints:
+        try:
+            json_response,status_code=query_lcd(endpoint, num_miss_query)
+            if status_code != 200:
+                logger.debug(f"Endpoint: {endpoint}")
+                logger.debug(f"Status Code: {status_code}")
+            else:
+                # Moves working RPC endpoint to front of list
+                endpoints.insert(0, endpoints.pop(endpoints.index(endpoint)))
+                logger.debug(f"Endpoints: {endpoints}")
+                break
+        except:
+            logger.warning(f"{endpoint} returned invalid data")
+            logger.debug(f"Endpoint: {endpoint}")
+            logger.debug(f"{endpoints}")
+            if endpoint == endpoints[-1]:
+                alert_time = datetime.now()
+                logger.critical(f"No RPC Endpoints Available")
+                for service in service_list:
+                    manage_service_alerts(address, service, 0, args.delay, num_miss_query, alert_time, endpoints)
+    return json_response
 
 def compare_balance(threshold, misses):
     if misses >= threshold:
@@ -278,9 +326,12 @@ def set_service_list(args):
         }
         service_list.append(discord)
         
-def manage_service_alerts(address, service, misses, delay, num_miss_query, alert_time):
+def manage_service_alerts(address, service, misses, delay, num_miss_query, alert_time, rpc):
     if service['Service'] == "PagerDuty":
-        summary = f"Price Oralce Alert: {address} - {misses} Missed"
+        if rpc:
+            summary = f"Price Oralce Alert: No RPC Severs Available"
+        else:
+            summary = f"Price Oralce Alert: {address} - {misses} Missed"
         active_alert = check_active_alerts(active_alerts,address,service['Service'])
         if active_alert:
             if alert_time >= (active_alert['Last Alert'] + timedelta(minutes=delay)):
@@ -296,15 +347,23 @@ def manage_service_alerts(address, service, misses, delay, num_miss_query, alert
 
     if service['Service'] == "Discord":
         active_alert = check_active_alerts(active_alerts,address,service['Service'])
-        embed=create_discord_embed(address, misses, service['Threshold'], service['API'], num_miss_query)
         if active_alert:
             # Time since last alert is greather than or equal to the user set frequency
             if alert_time >= (active_alert['Last Alert'] + timedelta(minutes=delay)):
+                if rpc:
+                    embed = DiscordEmbed(title="Price Oracle Alert", description=f"{address}\r\nNo RPC Servers Available", color='e53935')
+                else:
+                    embed=create_discord_embed(address, misses, service['Threshold'], service['API'], num_miss_query)
                 response = send_discord_alert(service['API'], service['UUID'], embed)
                 check_response(response,service)
                 # Update 'Last Alert' for the specific address/service pair
                 active_alert['Last Alert'] = alert_time
         else:
+            if rpc:
+                embed = DiscordEmbed(title="Price Oracle Alert", description=f"{address}\r\nNo RPC Servers Available:\r\n{rpc}", color='e53935')
+                
+            else:
+                embed=create_discord_embed(address, misses, service['Threshold'], service['API'], num_miss_query)
             # Creates the first alert for the address/service pair
             active_alerts.append(create_alert(service['Service'], address, misses, alert_time))
             response = send_discord_alert(service['API'], service['UUID'], embed)
