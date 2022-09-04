@@ -351,7 +351,7 @@ def manage_service_alerts(address, service, misses, delay, num_miss_query, alert
             # Time since last alert is greather than or equal to the user set frequency
             if alert_time >= (active_alert['Last Alert'] + timedelta(minutes=delay)):
                 if rpc:
-                    embed = DiscordEmbed(title="Price Oracle Alert", description=f"{address}\r\nNo RPC Servers Available", color='e53935')
+                    embed = DiscordEmbed(title="Price Oracle Alert", description=f"**No RPC Servers Available**\r\n{address}\r\n{rpc}", color='e53935')
                 else:
                     embed=create_discord_embed(address, misses, service['Threshold'], service['API'], num_miss_query)
                 response = send_discord_alert(service['API'], service['UUID'], embed)
@@ -360,7 +360,7 @@ def manage_service_alerts(address, service, misses, delay, num_miss_query, alert
                 active_alert['Last Alert'] = alert_time
         else:
             if rpc:
-                embed = DiscordEmbed(title="Price Oracle Alert", description=f"{address}\r\nNo RPC Servers Available:\r\n{rpc}", color='e53935')
+                embed = DiscordEmbed(title="Price Oracle Alert", description=f"**No RPC Servers Available**\r\n{address}\r\n{rpc}", color='e53935')
                 
             else:
                 embed=create_discord_embed(address, misses, service['Threshold'], service['API'], num_miss_query)
