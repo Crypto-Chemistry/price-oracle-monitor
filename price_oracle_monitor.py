@@ -176,7 +176,7 @@ def main():
                         alert_time = datetime.now()
                         logger.critical(f"No RPC Endpoints Available")
                         for service in service_list:
-                            manage_service_alerts(address, service, 0, args.delay, num_miss_query, alert_time, endpoints)
+                            manage_service_alerts(address, service, 0, args.delay, num_miss_query, alert_time, endpoints, endpoints)
             
             # Only proceed with valid endpoint response
             if json_response:
@@ -188,7 +188,7 @@ def main():
                 if address not in previous_misses.keys() or previous_misses[address] < misses:
                     if compare_balance(args.threshold, misses):
                         for service in service_list:
-                            manage_service_alerts(address, service, misses, args.delay, num_miss_query, alert_time)
+                            manage_service_alerts(address, service, misses, args.delay, num_miss_query, alert_time, endpoint, None)
                     previous_misses[address]=int(misses)
 
                 # Cleanup stale/timed-out alerts
@@ -326,7 +326,7 @@ def set_service_list(args):
         }
         service_list.append(discord)
         
-def manage_service_alerts(address, service, misses, delay, num_miss_query, alert_time, rpc):
+def manage_service_alerts(address, service, misses, delay, num_miss_query, alert_time, endpoint, rpc):
     if service['Service'] == "PagerDuty":
         if rpc:
             summary = f"Price Oralce Alert: No RPC Severs Available"
@@ -353,7 +353,7 @@ def manage_service_alerts(address, service, misses, delay, num_miss_query, alert
                 if rpc:
                     embed = DiscordEmbed(title="Price Oracle Alert", description=f"**No RPC Servers Available**\r\n{address}\r\n{rpc}", color='e53935')
                 else:
-                    embed=create_discord_embed(address, misses, service['Threshold'], service['API'], num_miss_query)
+                    embed=create_discord_embed(address, misses, service['Threshold'], endpoint, num_miss_query)
                 response = send_discord_alert(service['API'], service['UUID'], embed)
                 check_response(response,service)
                 # Update 'Last Alert' for the specific address/service pair
@@ -363,7 +363,7 @@ def manage_service_alerts(address, service, misses, delay, num_miss_query, alert
                 embed = DiscordEmbed(title="Price Oracle Alert", description=f"**No RPC Servers Available**\r\n{address}\r\n{rpc}", color='e53935')
                 
             else:
-                embed=create_discord_embed(address, misses, service['Threshold'], service['API'], num_miss_query)
+                embed=create_discord_embed(address, misses, service['Threshold'], endpoint, num_miss_query)
             # Creates the first alert for the address/service pair
             active_alerts.append(create_alert(service['Service'], address, misses, alert_time))
             response = send_discord_alert(service['API'], service['UUID'], embed)
