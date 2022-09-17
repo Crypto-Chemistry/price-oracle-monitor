@@ -314,10 +314,10 @@ def set_service_list(args):
         }
         service_list.append(pagerduty)
     if args.discord or args.discord_webhook:
-        if args.threshold:
-            discord_threshold=args.threshold
-        else:
+        if args.discord_threshold:
             discord_threshold=args.discord_threshold
+        else:
+            discord_threshold=args.threshold
         discord={
             'Service': "Discord",
             'API': args.discord_webhook,
@@ -363,6 +363,8 @@ def manage_service_alerts(address, service, misses, delay, num_miss_query, alert
                 embed = DiscordEmbed(title="Price Oracle Alert", description=f"**No RPC Servers Available**\r\n{address}\r\n{rpc}", color='e53935')
                 
             else:
+                logging.debug("Creating first discord embed")
+                logging.debug(f"{address} {misses} {service['Threshold']} {endpoint} {num_miss_query}")
                 embed=create_discord_embed(address, misses, service['Threshold'], endpoint, num_miss_query)
             # Creates the first alert for the address/service pair
             active_alerts.append(create_alert(service['Service'], address, misses, alert_time))
