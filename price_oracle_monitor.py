@@ -4,12 +4,12 @@ from discord_webhook import DiscordEmbed
 from pdpyras import EventsAPISession
 
 import argparse
-import requests
 import json
 import logging
 import os
-import time
+import requests
 import sys
+import time
 
 def main():
     parser = argparse.ArgumentParser()
@@ -27,15 +27,6 @@ def main():
         "--discord",
         action='store_true',
         help="Enable discord notifications"
-    )
-    parser.add_argument(
-        "-e",
-        "--delay",
-        dest="delay",
-        type=int,
-        default=30,
-        required=False,
-        help="Time between repeated notifications (default 30 minutes)"
     )
     parser.add_argument(
         "-f",
@@ -70,14 +61,6 @@ def main():
         help="Enable discord notifications"
     )
     parser.add_argument(
-        "-r",
-        "--list-threshold",
-        dest="threshold_list",
-        type=list,
-        required=False,
-        help="Thresholds for wallet balances before sending notifications"
-    )
-    parser.add_argument(
         "-t",
         "--threshold",
         dest="threshold",
@@ -108,20 +91,27 @@ def main():
         help="Discord webhook url to send notifications to"
     )
     parser.add_argument(
+        "--delay",
+        dest="delay",
+        type=int,
+        default=30,
+        required=False,
+        help="Time between repeated notifications (default 30 minutes)"
+    )
+    parser.add_argument(
         "--discord_threshold",
         dest="discord_threshold",
         type=int,
         required=False,
-        help="Discord specific threshold for alerts: TODO"
+        help="Discord specific threshold for alerts: WARNING - experimental"
     )
     parser.add_argument(
         "--pagerduty_threshold",
         dest="pagerduty_threshold",
         type=int,
         required=False,
-        help="PagerDuty specific threshold for alerts: TODO"
+        help="PagerDuty specific threshold for alerts: WARNING - experimental"
     )
-
     args = parser.parse_args()
     global active_alerts
     global service_list
@@ -131,7 +121,6 @@ def main():
     previous_misses={}
     global endpoints
     endpoints = args.lcd_endpoint
-    #misses=27
 
     # Configure Logger
     global logger
@@ -148,7 +137,6 @@ def main():
 
     # Main service loop
     while True:
-        #misses-=1
         for address in args.addresses:
             num_miss_query=f"/oracle/validators/{address}/miss"
             
@@ -223,7 +211,7 @@ def check_endpoints(address, endpoints, num_miss_query):
     for endpoint in endpoints:
         try:
             json_response,status_code=query_lcd(endpoint, num_miss_query)
-            if status_code != 200:
+            if status_code < 200 or status_code > 299:
                 logger.debug(f"Endpoint: {endpoint}")
                 logger.debug(f"Status Code: {status_code}")
             else:
@@ -361,7 +349,6 @@ def manage_service_alerts(address, service, misses, delay, num_miss_query, alert
         else:
             if rpc:
                 embed = DiscordEmbed(title="Price Oracle Alert", description=f"**No RPC Servers Available**\r\n{address}\r\n{rpc}", color='e53935')
-                
             else:
                 logging.debug("Creating first discord embed")
                 logging.debug(f"{address} {misses} {service['Threshold']} {endpoint} {num_miss_query}")

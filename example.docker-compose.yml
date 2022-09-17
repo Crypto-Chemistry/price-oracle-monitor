@@ -1,14 +1,14 @@
 version: '3.2'
 services:
 
-  walletmon:
+  price_oracle_monitor:
     build: .
-    command: "cc-pom.py \
+    command: "price_oracle_monitor.py \
               -a address1 address2 etc \
               -t 100 \
               -l 'http://lcd_endpoint_url' \
               -k 'PAGERDUTY_API_KEY' \
-              -w DISCORD_WEBHOOK_URL"
+              -w 'DISCORD_WEBHOOK_URL'"
     logging:
       driver: "json-file"
       options:
