@@ -4,12 +4,12 @@ from discord_webhook import DiscordEmbed
 from pdpyras import EventsAPISession
 
 import argparse
-import requests
 import json
 import logging
 import os
-import time
+import requests
 import sys
+import time
 
 def main():
     parser = argparse.ArgumentParser()
@@ -121,7 +121,6 @@ def main():
     previous_misses={}
     global endpoints
     endpoints = args.lcd_endpoint
-    #misses=27
 
     # Configure Logger
     global logger
@@ -138,7 +137,6 @@ def main():
 
     # Main service loop
     while True:
-        #misses-=1
         for address in args.addresses:
             num_miss_query=f"/oracle/validators/{address}/miss"
             
@@ -213,7 +211,7 @@ def check_endpoints(address, endpoints, num_miss_query):
     for endpoint in endpoints:
         try:
             json_response,status_code=query_lcd(endpoint, num_miss_query)
-            if status_code != 200:
+            if status_code < 200 or status_code > 299:
                 logger.debug(f"Endpoint: {endpoint}")
                 logger.debug(f"Status Code: {status_code}")
             else:
